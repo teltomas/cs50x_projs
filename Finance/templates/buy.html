@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Buy
+{% endblock %}
+
+{% block main %}
+
+    <h5>Buy Shares</h5>
+
+    <br/>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Price per Share</th>
+                <th>Amount of Shares to Buy</th>
+                <th>Total Price</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <form action="/buy" method="post">
+                        <td>{{ symbol }}</td>
+                        <td id="share_price" name="share_price">{{ price | usd }}</td>
+                        <td><input placeholder="Quantity" type="number" id="quantity" name="quantity" min="1" required></td>
+                        <td id="total_price" name="total_price">$0.00</td>
+                        <td><input name="action" type="hidden" value="purchase">
+                            <input name="symbol" type="hidden" value="{{ symbol }}">
+                            <button type="submit">Confirm Purchase</button></td>
+                    </form>
+                </tr>
+        </tbody>
+    </table>
+
+    <br/>
+
+    <h5 style="text-align: left;">&nbsp;Cash available: {{ cash | usd }}</h5>
+
+    <script>
+        document.getElementById('quantity').addEventListener("change", function() {
+
+            let sharePrice = (document.getElementById('share_price').innerText).match(/\d/g).join("") / 100;
+            let quantity = document.getElementById('quantity').value;
+            let totalPrice = sharePrice * quantity;
+            document.querySelector("#total_price").innerHTML = "$" + totalPrice.toFixed(2);
+        });
+
+    </script>
+
+{% endblock %}

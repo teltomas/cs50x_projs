@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Sell
+{% endblock %}
+
+{% block main %}
+
+
+
+<h4>Sell Shares</h4>
+
+<br/>
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th class="number">Shares Owned</th>
+                <th class="number">Price</th>
+                <th class="number">Total</th>
+                <th class="number">Sell Value</th>
+                <th class="number"></th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td>{{ symbol }}</td>
+                <td class="number">{{ quantity }}</td>
+                <td class="number" id="share_price">{{ price }}</td>
+                <td class="number">{{ value }}</td>
+                <form action="/sell" method="post">
+                <td class="number" name="total_price" id="total_price">$0.00</td>
+                <td class="number"><input placeholder="Quantity" type="number" id="quantity" name="quantity" min="1" max="{{ quantity }}" required {{ inactive }}>
+                    <input name="symbol" type="hidden" value="{{ symbol }}">
+                    <input name="action" type="hidden" value="sell">
+                    <button type="submit" {{ inactive }}>Sell</button></td>
+                </form>
+            </tr>
+        </tbody>
+
+    </table>
+
+    <br/>
+
+    <script>
+        document.getElementById('quantity').addEventListener("change", function() {
+    
+            let sharePrice = (document.getElementById('share_price').innerText).match(/\d/g).join("") / 100;
+            let quantity = document.getElementById("quantity").value;
+            let totalPrice = sharePrice * quantity;
+            document.querySelector("#total_price").innerHTML = "$" + totalPrice.toFixed(2);
+        });
+    
+    </script>
+
+
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    User Settings
+{% endblock %}
+
+{% block main %}
+
+    <h4>Change Password</h4>
+
+    <div class="formcontainer">
+        <form action="/settings" method="post">
+            <p><input type="password" autocomplete="off" id="cpassword" name="cpassword" placeholder="Current Password" required></p>
+            <p><input type="password" autocomplete="off" id="npassword" name="npassword" placeholder="New Password" required></p>
+            <p><input type="password" autocomplete="off" id="confpassword" name="confpassword" placeholder="Confirm New Password" required></p>
+            </br>
+            <button type="submit">Change Password</button>
+        </form>
+        </br>
+        </br>
+        <h5>{{ message }}</h5>
+        </br>
+        <p>New password must contain at least six characters or numbers, and must contain at least one number.</p>
+    </div>
+
+
+    <br/>
+
+
+
+{% endblock %}

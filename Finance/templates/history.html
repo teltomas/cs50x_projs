@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    History
+{% endblock %}
+
+{% block main %}
+
+    <h4>{{ message }}</h4>
+    <table>
+        <thead>
+            <tr>
+                <th>Time of Operation</th>
+                <th>Transaction Type</th>
+                <th>Stock</th>
+                <th class="number">No of Shares</th>
+                <th class="number">Value per Share</th>
+                <th class="number">Value of Operation</th>
+                <th class="number">Cash Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+
+
+            {% for row in history %}
+
+                <tr>
+                    <td>{{ row.time_stamp }}</td>
+                    <td>{{ row.operation }}</td>
+                    <td>{{ row.symbol }}</td>
+                    <td class="number">{{ row.quantity }}</td>
+                    <td class="number">{{ row.value_per_share }}</td>
+                    <td class="{{ row.operation }}">{{ row.value }}</td>
+                    <td class="number">{{ row.cash_balance }}</td>
+                </tr>
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+    <br/>
+
+
+{% endblock %}

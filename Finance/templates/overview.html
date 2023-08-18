@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Overview
+{% endblock %}
+
+{% block main %}
+
+<h4>Balance Overview</h4>
+</br>
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th class="number">Shares</th>
+                <th class="number">Price</th>
+                <th class="number">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+
+
+            {% for symbol in overview %}
+
+                <tr>
+                    <td>{{ symbol.symbol }}</td>
+                    <td class="number">{{ symbol.stock_quantity }}</td>
+                    <td class="number">{{ symbol.price }}</td>
+                    <td class="number">{{ symbol.stock_total }}</td>
+                    <td class="number"><form action="/buy" method="post" style="display: inline;">
+                            <input type="hidden" value="{{ symbol.symbol }}" name="symbol">
+                            <input type="hidden" value="quote" name="action" id="action">
+                            <button type="submit" style="display: inline;">Buy More</button>
+                        </form>
+                        &nbsp
+                            <form action="/sell" method="post" style="display: inline;">
+                            <input type="hidden" value="{{ symbol.symbol }}" name="symbol">
+                            <input type="hidden" value="quote" name="action" id="action">
+                            <button type="submit" style="display: inline;">Sell</button>
+                        </form></td>
+                </tr>
+            {% endfor %}
+                <tr style="background-color: white;">
+                    <td>{{ message }}</td>
+                    <td></td>
+                    <td class="number" style="font-weight: bold;">Cash:</td>
+                    <td class="number" style="font-weight: bold;">{{ cash }}</td>
+
+                </tr>
+                <tr style="background-color: white;">
+                    <td></td>
+                    <td></td>
+                    <td class="number" style="font-weight: bold; font-size: 1.1em;">GRAND TOTAL:</td>
+                    <td class="number" style="font-weight: bold; font-size: 1.1em;">{{ tot_balance }}</td>
+                </tr>
+        </tbody>
+
+    </table>
+
+    <br/>
+
+
+
+{% endblock %}

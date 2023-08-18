@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+
+    <div class="formcontainer">
+        <form action="/quote" method="post">
+            <input type="text" autocomplete="off" id="symbol" name="symbol" placeholder="Input Symbol to Quote" required>
+            &nbsp;
+            <button type="submit">Quote</button>
+        </form>
+    </div>
+
+    {% if quote == '1' %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Price per Share</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>{{ symbol }}</td>
+                    <td>{{ price | usd }}</td>
+                    <td><form action="/buy" method="post">
+                        <input type="hidden" value="{{ symbol }}" name="symbol" id="symbol">
+                        <input type="hidden" value="quote" name="action" id="action">
+                        <button type="submit">Buy</button>
+                        </form></td>
+                </tr>
+        </tbody>
+    </table>
+
+    {% endif %}
+
+
+    <h5 style="text-align: left;">&nbsp;Cash: {{ cash | usd }}</h5>
+
+    <br/>
+    <br/>
+
+    <h4>NASDAQ 100 Index</h4>
+    <br/>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Company Name</th>
+                <th class="number">Current Price per Share</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {% for row in market_data %}
+                <tr>
+                    <td>{{ row.symbol }}</td>
+                    <td>{{ row.companyName }}</td>
+                    <td class="number">{{ row.lastSalePrice }}</td>
+                    <td><form action="/buy" method="post">
+                        <input type="hidden" value="{{ row.symbol }}" name="symbol">
+                        <input type="hidden" value="quote" name="action" id="action">
+                        <button type="submit">Buy</button>
+                        </form></td>
+                </tr>
+            {% endfor %}
+
+        </tbody>
+    </table>
+    <p style="font-size: 0.7em; text-align: left; padding-left: 0.5em">Info from NASDAQ100 Index</p>
+
+    <br/>
+
+    
+
+
+
+
+{% endblock %}

@@ -1,0 +1,110 @@
+/* Size for brand */
+nav .navbar-brand
+{
+    font-size: xx-large;
+}
+
+/* Colors for brand */
+nav .navbar-brand .blue
+{
+    color: #537fbe;
+}
+nav .navbar-brand .red
+{
+    color: #ea433b;
+}
+nav .navbar-brand .yellow
+{
+    color: #f5b82e;
+}
+nav .navbar-brand .green
+{
+    color: #2e944b;
+}
+
+.container {
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 15px;
+    padding-right: 15px;
+    text-align: center;
+    width: 90%;
+}
+
+.formcontainer {
+    margin-left: auto;
+    margin-right: auto;
+    padding: 15px;
+    text-align: center;
+    width: 90%;
+}
+
+table {
+    background-color: transparent;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+table th,
+table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+tbody tr:nth-of-type(odd) {
+    background-color: rgb(179, 208, 255, 0.3)
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    margin: auto;
+    text-align: center;
+}
+
+.number {
+    text-align: right;
+}
+
+.Purchase {
+    text-align: right;
+    color: #ff2346;
+}
+
+.Withdrawal {
+    text-align: right;
+    color: #dc6900;
+}
+
+.Sell {
+    text-align: right;
+    color: #3e9a2c;
+}
+
+.Deposit {
+    text-align: right;
+    color: #224581;
+}
+
+button {
+    background-color: #468499;
+    border-radius: 0.3em;
+    border: 0px;
+    color: white;
+    padding: 0.5em;
+    display: inline;
+}
+
+button:hover {
+    background-color: #326374;
+}
+
+input {
+    padding: 0.3em;
+    border-radius: 0.3em;
+}
+
+select {
+    padding: 0.4em;
+    border-radius: 0.3em;
+}

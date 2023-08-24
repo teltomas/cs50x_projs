@@ -1,12 +1,10 @@
-import os
-import requests
+from datetime import datetime
+from pip._vendor import requests
 
 from cs50 import SQL
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, redirect, render_template, request, session
 from flask_session import Session
-from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
-from datetime import datetime
 
 from helpers import apology, login_required, lookup, usd
 
@@ -53,7 +51,7 @@ def index():
 
         if (len(overview) < 1):
 
-            return render_template("/overview.html", message = "You don't own any stocks at this moment.", cash=cash_balance)
+            return render_template("/overview.html", message = "You don't own any stocks at this moment.", cash=cash_balance, tot_balance=cash_balance)
 
         else:
 
@@ -63,13 +61,16 @@ def index():
 
                 symb = overview[i]['symbol']
                 stock_currentv = lookup(symb)
-                overview[i]["price"] = stock_currentv["price"]
-                overview[i]["stock_total"] = stock_currentv["price"] * overview[i]['stock_quantity']
-                stock_balance += overview[i]["stock_total"]
-                overview[i]["price"] = usd(overview[i]["price"])
-                overview[i]["stock_total"] = usd(overview[i]["stock_total"])
+                if (stock_currentv != None):
+                    overview[i]["price"] = stock_currentv["price"]
+                    overview[i]["stock_total"] = stock_currentv["price"] * overview[i]['stock_quantity']
+                    stock_balance += overview[i]["stock_total"]
+                    overview[i]["price"] = usd(overview[i]["price"])
+                    overview[i]["stock_total"] = usd(overview[i]["stock_total"])
+                else:
+                    return apology("Unable to look up share price", 403)
 
-            return render_template("/overview.html", overview=overview, cash=usd(cash_balance), tot_balance = usd(cash_balance + stock_balance))
+            return render_template("/overview.html", overview=overview, cash=cash_balance, tot_balance = (cash_balance + stock_balance))
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -101,6 +102,8 @@ def buy():
 
             try:
                 stock_currentv = lookup(symbol)
+                if (stock_currentv == None):
+                    return ValueError
                 price = stock_currentv["price"]
             except (ValueError, KeyError, IndexError, TypeError):
                 return apology("invalid symbol", 403)
@@ -116,6 +119,8 @@ def buy():
 
             try:
                 stock_currentv = lookup(symbol)
+                if (stock_currentv == None):
+                    return ValueError
                 price = stock_currentv["price"]
             except (ValueError, KeyError, IndexError, TypeError):
                 return apology("invalid symbol")
@@ -276,6 +281,8 @@ def quote():
 
         try:
             stock_currentv = lookup(symbol)
+            if (stock_currentv == None):
+                    return ValueError
             price = stock_currentv["price"]
         except (ValueError, KeyError, IndexError, TypeError):
             return apology("invalid symbol")
@@ -383,6 +390,8 @@ def sell():
 
             try:
                 stock_currentv = lookup(symbol)
+                if (stock_currentv == None):
+                    return ValueError
                 price = stock_currentv["price"]
             except (ValueError, KeyError, IndexError, TypeError):
                 return apology("invalid symbol", 403)
@@ -394,7 +403,7 @@ def sell():
         if (action == "sell"):
 
             sell_quantity = request.form.get("quantity")
-            symbol = request.form.get("symbol").upper()
+            symbol = request.form.get("symbol").upper() 
 
             if (len(symbol) < 1):
                 return apology("no symbol searched", 403)
@@ -414,6 +423,8 @@ def sell():
 
             try:
                 stock_currentv = lookup(symbol)
+                if (stock_currentv == None):
+                    return ValueError
                 price = stock_currentv["price"]
             except (ValueError, KeyError, IndexError, TypeError):
                 return apology("invalid symbol", 403)
@@ -478,7 +489,7 @@ def funds():
 
             db.execute("UPDATE users SET cash = ? WHERE id = ?;", cash_balance, session.get("user_id"))
             db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", session.get("user_id"), 0, t_type, 0, t_amount, datetime.now(), cash_balance)
-            return redirect("/")
+            return redirect("/history")
 
     return apology("Something went wrong", 403)
 

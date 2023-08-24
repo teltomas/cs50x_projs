@@ -1,0 +1,5 @@
+.vscode
+.venv
+Finance/__pycache__
+Finance/__pycache__
+Finance/flask_session

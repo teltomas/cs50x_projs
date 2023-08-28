@@ -139,6 +139,9 @@ def buy():
             except (ValueError, KeyError, IndexError, TypeError):
                 return apology("invalid input", 400)
             
+            if quantity < 1:
+                return apology("invalid quantity input", 400)
+            
             # get share current value
             price = check_price(symbol)
 
@@ -457,8 +460,8 @@ def sell():
             try:
                 sell_quantity = int(request.form.get("quantity"))
             except (ValueError, KeyError, IndexError, TypeError):
-                return apology("invalid quantity input", 400)
-            
+                return apology("invalid quantity input", 400)            
+    
             symbol = request.form.get("symbol").upper() 
 
             # get the updated price info for the symbol input

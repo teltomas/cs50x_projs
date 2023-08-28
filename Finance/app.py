@@ -23,9 +23,10 @@ Session(app)
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
-# define chech share price function
+# define check share price function
 def check_price(symbol):
 
+    # symbol input validation
     if (len(symbol) < 1):
         return apology("no symbol searched", 403)
 
@@ -33,6 +34,7 @@ def check_price(symbol):
         if (not a.isalpha()):
             return apology("invalid symbol", 403)
 
+    # check symbol share price
     try:
         stock_currentv = lookup(symbol)
         if (stock_currentv == None):
@@ -641,7 +643,7 @@ def settings():
         # Create hash for new password and store it after all conditions are met
 
         pass_hash = generate_password_hash(npass)
-        
+
         db.execute("UPDATE users SET hash = ? WHERE id = ?;", 
                    pass_hash, 
                    session.get("user_id"))

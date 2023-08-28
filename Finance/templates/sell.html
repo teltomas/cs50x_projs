@@ -27,8 +27,8 @@
             <tr>
                 <td>{{ symbol }}</td>
                 <td class="number">{{ quantity }}</td>
-                <td class="number" id="share_price">{{ price }}</td>
-                <td class="number">{{ value }}</td>
+                <td class="number" id="share_price">{{ price | usd }}</td>
+                <td class="number">{{ value | usd }}</td>
                 <form action="/sell" method="post">
                 <td class="number" name="total_price" id="total_price">$0.00</td>
                 <td class="number"><input placeholder="Quantity" type="number" id="quantity" name="quantity" min="1" max="{{ quantity }}" required {{ inactive }}>

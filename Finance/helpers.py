@@ -6,8 +6,12 @@ import subprocess
 import urllib
 import uuid
 
+from cs50 import SQL
 from flask import redirect, render_template, session
 from functools import wraps
+
+# Configure CS50 Library to use SQLite database
+db = SQL("sqlite:///finance.db")
 
 
 def apology(message, code=400):
@@ -78,3 +82,9 @@ def lookup(symbol):
 def usd(value):
     """Format value as USD."""
     return f"${value:,.2f}"
+
+def check_cash(id):
+    """chack user's cash amount"""
+    cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  id)
+    cash_balance = float(cash_balance[0]['cash'])
+    return cash_balance

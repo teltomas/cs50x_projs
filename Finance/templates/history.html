@@ -29,9 +29,9 @@
                     <td>{{ row.operation }}</td>
                     <td>{{ row.symbol }}</td>
                     <td class="number">{{ row.quantity }}</td>
-                    <td class="number">{{ row.value_per_share }}</td>
-                    <td class="{{ row.operation }}">{{ row.value }}</td>
-                    <td class="number">{{ row.cash_balance }}</td>
+                    <td class="number">{{ row.value_per_share | usd }}</td>
+                    <td class="{{ row.operation }}">{{ row.value | usd }}</td>
+                    <td class="number">{{ row.cash_balance | usd }}</td>
                 </tr>
             {% endfor %}
 

@@ -6,7 +6,7 @@ from flask import Flask, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import apology, login_required, lookup, usd
+from helpers import apology, login_required, lookup, usd, check_cash
 
 
 # Configure application
@@ -22,6 +22,26 @@ Session(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
+
+# define chech share price function
+def check_price(symbol):
+
+    if (len(symbol) < 1):
+        return apology("no symbol searched", 403)
+
+    for a in symbol:
+        if (not a.isalpha()):
+            return apology("invalid symbol", 403)
+
+    try:
+        stock_currentv = lookup(symbol)
+        if (stock_currentv == None):
+            return ValueError
+        price = float(stock_currentv["price"])
+    except (ValueError, KeyError, IndexError, TypeError):
+        return apology("invalid symbol", 403)
+    
+    return price
 
 
 @app.after_request
@@ -40,73 +60,68 @@ def index():
 
     if request.method == "POST":
 
-        return apology("TODO")
+        return apology("invalid request", 400)
 
     else:
-
-        overview = db.execute("SELECT * FROM balance JOIN stocks ON stocks.id = balance.stock_id WHERE balance.user_id = ?;", session.get("user_id"))
-        cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  session.get("user_id"))
-        cash_balance = float(cash_balance[0]['cash'])
-
-
+        
+        # get info from db for the current user to display the user's account overvue
+        overview = db.execute("SELECT * FROM balance JOIN stocks ON stocks.id = balance.stock_id WHERE balance.user_id = ?;", 
+                                session.get("user_id"))
+        
+        cash_balance = check_cash(session.get("user_id"))
+        
         if (len(overview) < 1):
 
-            return render_template("/overview.html", message = "You don't own any stocks at this moment.", cash=cash_balance, tot_balance=cash_balance)
+            # return message if user does not yet have any share
+            return render_template("/overview.html", 
+                                   message = "You don't own any stocks at this moment.", 
+                                   cash=cash_balance, 
+                                   tot_balance=cash_balance)
 
         else:
 
             stock_balance = 0
 
+            # populate overview info to display in overview page feching current share value remotely
             for i in range(len(overview)):
 
                 symb = overview[i]['symbol']
-                stock_currentv = lookup(symb)
-                if (stock_currentv != None):
-                    overview[i]["price"] = stock_currentv["price"]
-                    overview[i]["stock_total"] = stock_currentv["price"] * overview[i]['stock_quantity']
-                    stock_balance += overview[i]["stock_total"]
-                    overview[i]["price"] = usd(overview[i]["price"])
-                    overview[i]["stock_total"] = usd(overview[i]["stock_total"])
-                else:
-                    return apology("Unable to look up share price", 403)
+                stock_currentv = check_price(symb)
+                
+                overview[i]["price"] = stock_currentv
+                overview[i]["stock_total"] = stock_currentv * overview[i]['stock_quantity']
+                stock_balance += overview[i]["stock_total"]
+                overview[i]["price"] = usd(overview[i]["price"])
+                overview[i]["stock_total"] = usd(overview[i]["stock_total"])
 
-            return render_template("/overview.html", overview=overview, cash=cash_balance, tot_balance = (cash_balance + stock_balance))
+            return render_template("/overview.html", 
+                                   overview=overview, 
+                                   cash=cash_balance, 
+                                   tot_balance = (cash_balance + stock_balance))
 
 
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
 
-    cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  session.get("user_id"))
-    cash_balance = float(cash_balance[0]['cash'])
+    # update users cash amount to display
+    cash_balance = check_cash(session.get("user_id"))
 
     if request.method == "GET":
 
+        # return to quote page if method is GET
         return redirect("/quote")
 
     if request.method == "POST":
 
+        # declare info from the user input
         action = request.form.get("action")
-
         symbol = request.form.get("symbol").upper()
 
         # get quantity of shares to buy
         if (action == "quote"):
 
-            if (len(symbol) < 1):
-                return apology("no symbol searched", 403)
-
-            for a in symbol:
-                if (not a.isalpha()):
-                    return apology("invalid symbol", 403)
-
-            try:
-                stock_currentv = lookup(symbol)
-                if (stock_currentv == None):
-                    return ValueError
-                price = stock_currentv["price"]
-            except (ValueError, KeyError, IndexError, TypeError):
-                return apology("invalid symbol", 403)
+            price = check_price(symbol)
 
             return render_template("/buy.html", cash=cash_balance, price=price, symbol=symbol)
         
@@ -115,18 +130,18 @@ def buy():
 
             """Buy shares of stock"""
             # retrieve the amount of stocks to purchase and set purchase value
-            quantity = int(request.form.get("quantity"))
-
-            try:
-                stock_currentv = lookup(symbol)
-                if (stock_currentv == None):
-                    return ValueError
-                price = stock_currentv["price"]
+            
+            # validation of quantity input
+            try: 
+                quantity = int(request.form.get("quantity"))
             except (ValueError, KeyError, IndexError, TypeError):
-                return apology("invalid symbol")
+                return apology("invalid input", 400)
+            
+            # get share current value
+            price = check_price(symbol)
 
-            purchase_value = quantity * price
-
+            # calc total purchase value
+            purchase_value = quantity * price # type:ignore
 
             # cancel purchase of the user does not have suficient funds
             if (purchase_value > cash_balance):
@@ -135,6 +150,7 @@ def buy():
             # proceed with purchase in case funds are suficient
             else:
 
+                # update users available cash 
                 cash_balance = cash_balance - purchase_value
 
                 # check if symbol exists in stocks table
@@ -155,25 +171,41 @@ def buy():
                 stock_id = int(stock_id[0]['id'])
 
                 # check if user has shares of the stock being purchased
-                user_stock_quantity = db.execute("SELECT stock_quantity FROM balance WHERE user_id = ? AND stock_id = ?;", session.get("user_id"), stock_id)
+                user_stock_quantity = db.execute("SELECT stock_quantity FROM balance WHERE user_id = ? AND stock_id = ?;", 
+                                                 session.get("user_id"), 
+                                                 stock_id)
 
                 # insert stock data into balance table if it's first time purchasing shares from this stock
                 if (len(user_stock_quantity) < 1):
 
-                    db.execute("INSERT INTO balance (user_id, stock_id, stock_quantity) VALUES (?, ?, ?);", session.get("user_id"), stock_id, quantity)
+                    db.execute("INSERT INTO balance (user_id, stock_id, stock_quantity) VALUES (?, ?, ?);", 
+                               session.get("user_id"), 
+                               stock_id, 
+                               quantity)
 
                 # Updating shares quantity is user already has shares from this stock
                 else:
 
                     user_stock_quantity = int(user_stock_quantity[0]['stock_quantity'])
                     update_quant = user_stock_quantity + quantity
-                    db.execute("UPDATE balance SET stock_quantity = ? WHERE user_id = ? AND stock_id = ?;", update_quant, session.get("user_id"), stock_id)
+                    db.execute("UPDATE balance SET stock_quantity = ? WHERE user_id = ? AND stock_id = ?;", 
+                               update_quant, 
+                               session.get("user_id"), 
+                               stock_id)
 
                 # insert purchase into users history
 
-                db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", session.get("user_id"), stock_id, "Purchase", quantity, purchase_value, datetime.now(), cash_balance)
+                db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", 
+                           session.get("user_id"), 
+                           stock_id, "Purchase", 
+                           quantity, 
+                           purchase_value, 
+                           datetime.now(), 
+                           cash_balance)
 
-                db.execute("UPDATE users SET cash = ? WHERE id = ?;", cash_balance, session.get("user_id"))
+                db.execute("UPDATE users SET cash = ? WHERE id = ?;", 
+                           cash_balance, 
+                           session.get("user_id"))
 
             return redirect("/")
 
@@ -183,20 +215,25 @@ def buy():
 def history():
     """Show history of transactions"""
 
-    history = db.execute("SELECT time_stamp, operation, symbol, quantity, value, cash_balance FROM history JOIN stocks ON history.stock_id = stocks.id WHERE user_id = ? ORDER BY time_stamp DESC;", session.get("user_id"))
+    # get users history info from the history's DB
+    history = db.execute("SELECT time_stamp, operation, symbol, quantity, value, cash_balance FROM history JOIN stocks ON history.stock_id = stocks.id WHERE user_id = ? ORDER BY time_stamp DESC;", 
+                         session.get("user_id"))
 
+    # return message if user does not have any history to show
     if (len(history) < 1):
-        return render_template("/history.html", message = "No operations history yet to display")
+        return render_template("/history.html", 
+                               message = "No operations history yet to display")
 
+    # populate table of user's history to be displayed
     else:
 
         for row in history:
             if (int(row['quantity']) == 0):
                 row['value_per_share'] = 0
             else:
-                row['value_per_share'] = usd(int(row['value']) / int(row['quantity']))
-            row['value'] = usd(row['value'])
-            row['cash_balance'] = usd(float(row['cash_balance']))
+                row['value_per_share'] = float(row['value']) / int(row['quantity'])
+            row['value'] = row['value']
+            row['cash_balance'] = float(row['cash_balance'])
 
         return render_template("/history.html", history=history)
 
@@ -220,7 +257,8 @@ def login():
             return apology("must provide password", 403)
 
         # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))
+        rows = db.execute("SELECT * FROM users WHERE username = ?", 
+                          request.form.get("username"))
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
@@ -253,9 +291,10 @@ def logout():
 def quote():
     """Get stock quote."""
 
-    cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  session.get("user_id"))
-    cash_balance = float(cash_balance[0]['cash'])
+    # update user's cash amount to be displayed
+    cash_balance = check_cash(session.get("user_id"))
 
+    # get info from the nasdaq100 index 
     try:
         headers={"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"}
         res=requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100",headers=headers)
@@ -263,31 +302,27 @@ def quote():
     except (requests.RequestException, ValueError, KeyError, IndexError):
         return apology("Service Unavailable", 503)
 
-
+    # in the GET method, only display the nasdaq100 index info
     if request.method == "GET":
           
-        return render_template("/quote.html", cash=cash_balance, market_data=main_data, quote="0")
+        return render_template("/quote.html", 
+                               cash=cash_balance, 
+                               market_data=main_data, 
+                               quote="0")
 
+    # in the POST method display the quote of the share requested by the user
     if request.method == "POST":
 
         symbol = request.form.get("symbol").upper()
 
-        if (len(symbol) < 1):
-            return apology("no symbol searched")
+        price = check_price(symbol)
 
-        for a in symbol:
-            if (not a.isalpha()):
-                return apology("invalid symbol")
-
-        try:
-            stock_currentv = lookup(symbol)
-            if (stock_currentv == None):
-                    return ValueError
-            price = stock_currentv["price"]
-        except (ValueError, KeyError, IndexError, TypeError):
-            return apology("invalid symbol")
-
-        return render_template("/quote.html", cash=cash_balance, price=price, symbol=symbol, market_data=main_data, quote="1")
+        return render_template("/quote.html", 
+                               cash=cash_balance, 
+                               price=price, 
+                               symbol=symbol, 
+                               market_data=main_data, 
+                               quote="1")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -327,7 +362,8 @@ def register():
             return apology("passwords do not match", 400)
 
         # check if username is already in use
-        userExist = db.execute("SELECT * FROM users WHERE username = ?", userName)
+        userExist = db.execute("SELECT * FROM users WHERE username = ?", 
+                               userName)
 
         if (len(userExist) > 0):
 
@@ -338,9 +374,12 @@ def register():
 
         pass_hash = generate_password_hash(passd)
 
-        db.execute("INSERT INTO users (username, hash) VALUES (?, ?);", userName, pass_hash)
+        db.execute("INSERT INTO users (username, hash) VALUES (?, ?);", 
+                   userName, 
+                   pass_hash)
 
-        return render_template("/login.html", user_alert = "Registration Successful! Thank you for registering. You may login.")
+        return render_template("/login.html", 
+                               user_alert = "Registration Successful! Thank you for registering. You may login.")
 
     # display registration form in case the user gets to the registration page via GET method
     else:
@@ -354,24 +393,28 @@ def register():
 def sell():
     """Sell shares of stock"""
 
-    stocks = db.execute("SELECT symbol FROM balance JOIN stocks ON balance.stock_id = stocks.id WHERE user_id = ?;", session.get("user_id"))
-    cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  session.get("user_id"))
-    cash_balance = float(cash_balance[0]['cash'])
-
+    # get the user's shares owned info and chash amount from DB
+    stocks = db.execute("SELECT symbol FROM balance JOIN stocks ON balance.stock_id = stocks.id WHERE user_id = ?;", 
+                        session.get("user_id"))
+    
+    cash_balance = check_cash(session.get("user_id"))
 
     if request.method == "GET":
 
+        # redirect to main page if method is GET
         return redirect("/")
 
     if request.method == "POST":
 
+        # get info of type of action
         action = request.form.get("action")
-
 
         if (action == "quote"):
 
+            # if action is to quote sell, get info from the DB of the amount of shares the user has from the symbol requested
             symbol = request.form.get("symbol").upper()
 
+            # validation of user's input
             if (len(symbol) < 1):
                 return apology("no symbol searched", 403)
 
@@ -379,41 +422,51 @@ def sell():
                 if (not a.isalpha()):
                     return apology("invalid symbol", 403)
 
-            balance = db.execute("SELECT stock_quantity, stock_id FROM balance JOIN stocks ON balance.stock_id = stocks.id WHERE user_id = ? AND symbol = ?;", session.get("user_id"), symbol)
+            balance = db.execute("SELECT stock_quantity, stock_id FROM balance JOIN stocks ON balance.stock_id = stocks.id WHERE user_id = ? AND symbol = ?;", 
+                                 session.get("user_id"), 
+                                 symbol)
 
+            # message in case user does not have any share from symbol requested
             if (len(balance) < 1):
                 return apology("you don't have any shares from this symbol", 403)
 
+            # in case of a valid symbol input check the amount of shares owned and the share symbol ID
             quantity = int(balance[0]['stock_quantity'])
             stock_id = balance[0]['stock_id']
 
+            # check current share value
+            price = check_price(symbol)        
 
-            try:
-                stock_currentv = lookup(symbol)
-                if (stock_currentv == None):
-                    return ValueError
-                price = stock_currentv["price"]
-            except (ValueError, KeyError, IndexError, TypeError):
-                return apology("invalid symbol", 403)
+            # get the total share value
+            value = quantity * price #type: ignore
 
-            value = quantity * price
-
-            return render_template("/sell.html", price=usd(price), quantity=quantity, value=usd(value), symbol=symbol,  symbols=stocks)
+            return render_template("/sell.html", 
+                                   price=price, 
+                                   quantity=quantity, 
+                                   value=value, 
+                                   symbol=symbol,  
+                                   symbols=stocks)
 
         if (action == "sell"):
 
-            sell_quantity = request.form.get("quantity")
+            # if action is to proceed with sale
+
+            # validate the user input of quantity of shares to sell
+            try:
+                sell_quantity = int(request.form.get("quantity"))
+            except (ValueError, KeyError, IndexError, TypeError):
+                return apology("invalid quantity input", 400)
+            
             symbol = request.form.get("symbol").upper() 
 
-            if (len(symbol) < 1):
-                return apology("no symbol searched", 403)
+            # get the updated price info for the symbol input
+            price = check_price(symbol)
 
-            for a in symbol:
-                if (not a.isalpha()):
-                    return apology("invalid symbol", 403)
+            balance = db.execute("SELECT stock_quantity, stock_id FROM balance JOIN stocks ON balance.stock_id = stocks.id WHERE user_id = ? AND symbol = ?;", 
+                                 session.get("user_id"), 
+                                 symbol)
 
-            balance = db.execute("SELECT stock_quantity, stock_id FROM balance JOIN stocks ON balance.stock_id = stocks.id WHERE user_id = ? AND symbol = ?;", session.get("user_id"), symbol)
-
+            # message in case user does not have any share from symbol requested 
             if (len(balance) < 1):
                 return apology("you don't have any shares from this symbol", 403)
 
@@ -421,60 +474,79 @@ def sell():
             stock_id = balance[0]['stock_id']
 
 
-            try:
-                stock_currentv = lookup(symbol)
-                if (stock_currentv == None):
-                    return ValueError
-                price = stock_currentv["price"]
-            except (ValueError, KeyError, IndexError, TypeError):
-                return apology("invalid symbol", 403)
-
-
-            if (not sell_quantity.isnumeric() or int(sell_quantity) < 1 or int(sell_quantity) > quantity):
+            # message in case user is trying to sell more shares than owned or if quantity input is invalid
+            if (sell_quantity < 1 or sell_quantity > quantity):
                 return apology("share quantity invalid", 403)
 
+            # proceed with sale if all conditions are met
             else:
-                sell_quantity = int(sell_quantity)
-                sell_value = sell_quantity * price
+                # update user's cash amount and shares quantity owned after sale
+                sell_value = sell_quantity * price #type:ignore
                 cash_balance+= sell_value
                 quantity-=sell_quantity
-                db.execute("UPDATE users SET cash = ? WHERE id = ?;", cash_balance, session.get("user_id"))
+                db.execute("UPDATE users SET cash = ? WHERE id = ?;", 
+                           cash_balance, 
+                           session.get("user_id"))
 
+                # update db with the new share amount
                 if (quantity > 0):
-                    db.execute("UPDATE balance SET stock_quantity = ? WHERE stock_id = ? AND user_id = ?;", quantity, stock_id, session.get("user_id"))
-
+                    db.execute("UPDATE balance SET stock_quantity = ? WHERE stock_id = ? AND user_id = ?;", 
+                               quantity, 
+                               stock_id, 
+                               session.get("user_id"))
+                
+                # remove the share info from the balance db table in case the amount of shares is 0 (zero) after sale
                 else:
-                    db.execute("DELETE FROM balance WHERE stock_id = ? AND user_id = ?;", stock_id, session.get("user_id"))
+                    db.execute("DELETE FROM balance WHERE stock_id = ? AND user_id = ?;", 
+                               stock_id, 
+                               session.get("user_id"))
 
-                db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", session.get("user_id"), stock_id, "Sell", sell_quantity, sell_value, datetime.now(), cash_balance)
+                # update history DB with transaction
+                db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", 
+                           session.get("user_id"), 
+                           stock_id, 
+                           "Sell", 
+                           sell_quantity, 
+                           sell_value, 
+                           datetime.now(), 
+                           cash_balance)
 
-
-    return redirect("/")
 
 @app.route("/funds", methods=["GET", "POST"])
 @login_required
 def funds():
+    """to deposit or withdraw cash"""
 
-    cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  session.get("user_id"))
-    cash_balance = float(cash_balance[0]['cash'])
+    # get user's updated chash amount from db
+    cash_balance = check_cash(session.get("user_id"))
 
+    # redirect to cash operation form in case of GET method 
     if request.method == "GET":
 
-        return render_template("/funds.html", cash=usd(cash_balance))
+        return render_template("/funds.html", cash=cash_balance)
 
+    # proceed with cash operation in case of POST method
     if request.method == "POST":
 
+        # fetch the requested operation type
         t_type = request.form.get("t_type")
 
+        # fetch the cash amount for the operation
         t_amount = request.form.get("amount")
 
+        # proceed with operation if option is valid
         if (t_type == "Deposit" or t_type == "Withdrawal"):
 
+            # validation of cash transaction amount
             try:
                 t_amount = float(t_amount)
             except ValueError:
                 return apology("Input value not valid", 403)
-
+            
+            if t_amount <= 0:
+                return apology("Input value not valid", 403)
+            
+            # update the user's cash value if deposit or withdrawal transaction
             if (t_type == "Deposit"):
 
                 cash_balance += t_amount
@@ -482,23 +554,40 @@ def funds():
 
             if (t_type == "Withdrawal"):
 
+                # return message if user tries to withdraw more cash than possessed
                 if (t_amount > cash_balance):
                     return apology("Insuficient Funds", 403)
 
                 cash_balance -= t_amount
 
-            db.execute("UPDATE users SET cash = ? WHERE id = ?;", cash_balance, session.get("user_id"))
-            db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", session.get("user_id"), 0, t_type, 0, t_amount, datetime.now(), cash_balance)
+            # update DB with updated user's cash owned and update history DB with transaction
+            db.execute("UPDATE users SET cash = ? WHERE id = ?;", 
+                       cash_balance, 
+                       session.get("user_id"))
+            
+            db.execute("INSERT INTO history (user_id, stock_id, operation, quantity, value, time_stamp, cash_balance) VALUES (?, ?, ?, ?, ?, ?, ?);", 
+                       session.get("user_id"), 
+                       0, 
+                       t_type, 
+                       0, 
+                       t_amount, 
+                       datetime.now(), 
+                       cash_balance)
+            
             return redirect("/history")
 
-    return apology("Something went wrong", 403)
+    # return error if there was a bad request
+    return apology("Something went wrong", 400)
+
 
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
+    """lets user's change their passwords"""
 
     if request.method == "GET":
-
+        
+        # render the settings template in case of GET method 
         return render_template("settings.html")
 
     if request.method == "POST":
@@ -520,10 +609,13 @@ def settings():
             return render_template("settings.html", message = "New Passwords don't match")
 
         # Query database for username
-        userdata = db.execute("SELECT * FROM users WHERE id = ?", session.get("user_id"))
+        userdata = db.execute("SELECT * FROM users WHERE id = ?", 
+                              session.get("user_id"))
 
         # Ensure password is correct
-        if not check_password_hash(userdata[0]["hash"], request.form.get("cpassword")):
+        if not check_password_hash(userdata[0]["hash"], 
+                                   request.form.get("cpassword")):
+            
             return apology("wrong password", 403)
 
         count_numb = 0
@@ -549,7 +641,10 @@ def settings():
         # Create hash for new password and store it after all conditions are met
 
         pass_hash = generate_password_hash(npass)
-        db.execute("UPDATE users SET hash = ? WHERE id = ?;", pass_hash, session.get("user_id"))
+        
+        db.execute("UPDATE users SET hash = ? WHERE id = ?;", 
+                   pass_hash, 
+                   session.get("user_id"))
 
 
     return render_template("/settings.html", message = "Password Updated")

@@ -515,6 +515,8 @@ def sell():
                            sell_value, 
                            datetime.now(), 
                            cash_balance)
+                
+        return redirect("/")
 
 
 @app.route("/funds", methods=["GET", "POST"])

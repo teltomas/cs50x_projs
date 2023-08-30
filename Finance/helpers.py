@@ -5,6 +5,7 @@ import requests
 import subprocess
 import urllib
 import uuid
+import pandas as pd
 
 from cs50 import SQL
 from flask import redirect, render_template, session
@@ -53,7 +54,7 @@ def lookup(symbol):
 
     # Yahoo Finance API
     url = (
-        f"https://query1.finance.yahoo.com/v7/finance/download/{urllib.parse.quote_plus(symbol)}"
+        f"https://query1.finance.yahoo.com/v7/finance/download/{urllib.parse.quote_plus(symbol)}"  # type: ignore
         f"?period1={int(start.timestamp())}"
         f"&period2={int(end.timestamp())}"
         f"&interval=1d&events=history&includeAdjustedClose=true"
@@ -88,3 +89,20 @@ def check_cash(id):
     cash_balance = db.execute("SELECT cash FROM users WHERE id = ?;",  id)
     cash_balance = float(cash_balance[0]['cash'])
     return cash_balance
+
+def get_index():
+
+    # pretty printing of pandas dataframe
+    pd.set_option('expand_frame_repr', False)
+    pd.set_option("display.max_rows", None, "display.max_columns", None) # type: ignore
+
+    # There are 5 tables on the Wikipedia page
+    # we want the last table
+
+    payload=pd.read_html('https://en.wikipedia.org/wiki/Nasdaq-100')
+
+    data = payload[4][["Ticker", "Company"]]
+
+    data = list(data.itertuples(index=False))
+
+    return data

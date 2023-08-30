@@ -1,12 +1,13 @@
+import pandas as pd
 from datetime import datetime
 from pip._vendor import requests
 
 from cs50 import SQL
 from flask import Flask, redirect, render_template, request, session
-from flask_session import Session
+from flask_session import Session # type: ignore
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import apology, login_required, lookup, usd, check_cash
+from helpers import apology, login_required, lookup, usd, check_cash, get_index
 
 
 # Configure application
@@ -301,18 +302,17 @@ def quote():
 
     # get info from the nasdaq100 index 
     try:
-        headers={"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"}
-        res=requests.get("https://api.nasdaq.com/api/quote/list-type/nasdaq100",headers=headers)
-        main_data=res.json()['data']['data']['rows']
-    except (requests.RequestException, ValueError, KeyError, IndexError):
+        main_data = get_index()
+    except (ValueError, KeyError, IndexError):
         return apology("Service Unavailable", 503)
-
+    
+    
     # in the GET method, only display the nasdaq100 index info
     if request.method == "GET":
           
         return render_template("/quote.html", 
                                cash=cash_balance, 
-                               market_data=main_data, 
+                               index=main_data, 
                                quote="0")
 
     # in the POST method display the quote of the share requested by the user
@@ -326,7 +326,7 @@ def quote():
                                cash=cash_balance, 
                                price=price, 
                                symbol=symbol, 
-                               market_data=main_data, 
+                               index=main_data, 
                                quote="1")
 
 

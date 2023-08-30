@@ -52,20 +52,20 @@
             <tr>
                 <th>Symbol</th>
                 <th>Company Name</th>
-                <th class="number">Current Price per Share</th>
+                <!-- <th class="number">Current Price per Share</th> -->
             </tr>
         </thead>
         <tbody>
 
-            {% for row in market_data %}
+            {% for row in index %}
                 <tr>
-                    <td>{{ row.symbol }}</td>
-                    <td>{{ row.companyName }}</td>
-                    <td class="number">{{ row.lastSalePrice }}</td>
+                    <td>{{ row.Ticker }}</td>
+                    <td>{{ row.Company }}</td>
+                    <!-- <td class="number">{{ row.price }}</td> -->
                     <td><form action="/buy" method="post">
-                        <input type="hidden" value="{{ row.symbol }}" name="symbol">
+                        <input type="hidden" value="{{ row.Ticker }}" name="symbol">
                         <input type="hidden" value="quote" name="action" id="action">
-                        <button type="submit">Buy</button>
+                        <button type="submit">Quote</button>
                         </form></td>
                 </tr>
             {% endfor %}
